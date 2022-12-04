@@ -43,7 +43,8 @@ class MovieSerializer(serializers.Serializer):
 class ReviewSerializer(serializers.ModelSerializer):
     class Meta:
         model = Review
-        fields = "__all__"
+        #fields = "__all__"
+        exclude = ('watchlist',)
     
 class WatchListSerializer(serializers.ModelSerializer): #Model serializer doesn;t need to define create-update methods
     #main meta class is defined import Model mentioning which fields you want
