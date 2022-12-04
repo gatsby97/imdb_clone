@@ -1,12 +1,14 @@
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework import generics
+from rest_framework import mixins
 #from rest_framework.decorators import api_view
 from django.shortcuts import render
 from django.http import HttpResponse,JsonResponse
-from watchmate.api.serializers import WatchListSerializer,StreamPlatformSerializer #replace Movieserializer with updated WatchListSerializer
+from watchmate.api.serializers import WatchListSerializer,StreamPlatformSerializer,ReviewSerializer #replace Movieserializer with updated WatchListSerializer
 # Create your views here.
 from rest_framework.views import APIView
-from watchmate.models import WatchList,StreamPlatform # Movies models is replaced with watchlist serializer 
+from watchmate.models import WatchList,StreamPlatform,Review # Movies models is replaced with watchlist serializer 
 
 
 # views are of 2 types class based and function based views 
@@ -51,6 +53,25 @@ def movie_detail(request,pk):
         movie.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
     """
+class ReviewDetailAV(mixins.RetrieveModelMixin,generics.GenericAPIView):
+    queryset = Review.objects.all()
+    serializer_class = ReviewSerializer
+    def get(self, request , *args, **kwargs):
+        return self.retrieve(request,*args,**kwargs)
+    
+    
+       
+    
+
+class ReviewListAV(mixins.ListModelMixin, mixins.CreateModelMixin, generics.GenericAPIView):
+    queryset = Review.objects.all()
+    serializer_class = ReviewSerializer
+    
+    def get(self, request , *args, **kwargs):
+        return self.list(request,*args,**kwargs)
+    
+    def post(self,request, *args, **kwargs):
+        return self.create(request,*args,**kwargs)
 
 class WatchListAV(APIView):
     
@@ -70,6 +91,7 @@ class WatchListAV(APIView):
             return Response(serializer.data)
         else:
             return Response(serializer.errors)
+
         
 class WatchDetailAV(APIView):
     # status object to pass status codes from status clss from DRF
@@ -133,3 +155,5 @@ class StreamPlatformDetailAV(APIView):
         deleted_obj = StreamPlatform.objects.get(pk=pk)
         deleted_obj.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+    
+
