@@ -1,9 +1,10 @@
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework import generics
+from rest_framework import generics,viewsets
+from rest_framework.exceptions import ValidationError
 #from rest_framework import mixins
 #from rest_framework.decorators import api_view
-from django.shortcuts import render
+from django.shortcuts import render,get_object_or_404
 from django.http import HttpResponse,JsonResponse
 from watchmate.api.serializers import (WatchListSerializer,
                                     StreamPlatformSerializer,
@@ -77,11 +78,16 @@ class ReviewListAV(mixins.ListModelMixin, mixins.CreateModelMixin, generics.Gene
 
 class ReviewCreateAV(generics.CreateAPIView):
     serializer_class = ReviewSerializer
-    
+    def get_queryset(self):
+        return Review.objects.all()
     def perform_create(self,serializer):
         pk = self.kwargs.get('pk')
         movie= WatchList.objects.get(pk=pk)
-        serializer.save(watchlist=movie)
+        reviewer = self.request.user
+        review_queryset = Review.objects.filter(watchlist=movie,reviewer=reviewer)
+        if review_queryset.exists():
+            raise ValidationError("User has already reviewed this")
+        serializer.save(watchlist=movie,reviewer=reviewer)
         
 
 class ReviewListAV(generics.ListAPIView):
@@ -142,6 +148,30 @@ class WatchDetailAV(APIView):
         movie = WatchList.objects.get(pk=pk)
         movie.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+    
+class StreamPlatformAV(viewsets.ModelViewSet):
+    queryset = StreamPlatform.objects.all()
+    serializer_class = StreamPlatformSerializer
+
+""" class StreamPlatformAV(viewsets.ViewSet):# no need to make 2 diff urls for these two classes 
+    def list(self, request):
+        queryset = StreamPlatform.objects.all()
+        serializer = StreamPlatformSerializer(queryset, many=True,context={'request':request})
+        return Response(serializer.data)
+
+    def retrieve(self, request, pk=None):
+        queryset = StreamPlatform.objects.all()
+        stream = get_object_or_404(queryset, pk=pk)
+        serializer = StreamPlatformSerializer(stream,context={'request':request})
+        return Response(serializer.data)
+    
+    def create(self, request):
+        serializer = StreamPlatformSerializer(data= request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        else:
+            return Response(serializer.errors) """
 
 class StreamPlatformListAV(APIView):
     
@@ -181,4 +211,5 @@ class StreamPlatformDetailAV(APIView):
         deleted_obj.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
     
+
 
