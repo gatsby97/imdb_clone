@@ -2,6 +2,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework import generics,viewsets
 from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import IsAuthenticated,IsAuthenticatedOrReadOnly
 #from rest_framework import mixins
 #from rest_framework.decorators import api_view
 from django.shortcuts import render,get_object_or_404
@@ -12,7 +13,7 @@ from watchmate.api.serializers import (WatchListSerializer,
 # Create your views here.
 from rest_framework.views import APIView
 from watchmate.models import WatchList,StreamPlatform,Review # Movies models is replaced with watchlist serializer 
-
+from watchmate.api.permissions import AdminOrReadOnly,ReviewUserOrReadOnly
 
 # views are of 2 types class based and function based views 
 # function based views decorators api_view is used and methods are defined using if else conditions like "GET,POST"etc
@@ -87,13 +88,23 @@ class ReviewCreateAV(generics.CreateAPIView):
         review_queryset = Review.objects.filter(watchlist=movie,reviewer=reviewer)
         if review_queryset.exists():
             raise ValidationError("User has already reviewed this")
+        
+        if movie.number_rating==0:
+            movie.avg_rating = serializer.validated_data['rating']
+        else:
+            
+            movie.avg_rating = (movie.avg_rating+ serializer.validated_data['rating'])/2
+        movie.number_rating = movie.number_rating+1
+        movie.save()
+            
+        
         serializer.save(watchlist=movie,reviewer=reviewer)
         
 
 class ReviewListAV(generics.ListAPIView):
-    queryset = Review.objects.all()
+    #queryset = Review.objects.all()
     serializer_class = ReviewSerializer
-    
+    permission_classes = [IsAuthenticatedOrReadOnly]  
     def get_queryset(self):
         pk = self.kwargs['pk']
         return Review.objects.filter(watchlist = pk)
@@ -103,7 +114,7 @@ class ReviewListAV(generics.ListAPIView):
 class ReviewDetailAV(generics.RetrieveUpdateDestroyAPIView):
     queryset = Review.objects.all()
     serializer_class = ReviewSerializer
-
+    permission_classes = [ReviewUserOrReadOnly]  
 class WatchListAV(APIView):
     
     # in class based views have their inbuilt methods like get, post, delete delete etc but we have to pass serializer and return response
